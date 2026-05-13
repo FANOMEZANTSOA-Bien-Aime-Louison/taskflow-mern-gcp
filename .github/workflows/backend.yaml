@@ -20,7 +20,7 @@ jobs:
 
     permissions:
       contents: read
-      id-token: write   # OIDC GCP
+      id-token: write
 
     steps:
 
@@ -39,29 +39,41 @@ jobs:
     - name: Setup Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
 
-    # 4. Docker auth
+    # 4. ✅ Installer gke-gcloud-auth-plugin (AJOUT ICI)
+    - name: Install GKE auth plugin
+      run: |
+        gcloud components install gke-gcloud-auth-plugin --quiet
+
+    # 5. Docker auth
     - name: Configure Docker authentication
       run: |
-        gcloud auth configure-docker $ARTIFACT_REGISTRY
+        gcloud auth configure-docker $ARTIFACT_REGISTRY --quiet
 
-    # 5. Build image
+    # 6. Build image
     - name: Build Docker image
       run: |
-        docker build -t $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }} ./backend
+        docker build \
+          -t $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }} \
+          ./backend
 
-    # 6. Push image
+    # 7. Push image
     - name: Push Docker image
       run: |
         docker push $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }}
 
-    # 7. Get GKE credentials (ZONE FIXED)
+    # 8. Get GKE credentials
     - name: Get GKE credentials
       run: |
         gcloud container clusters get-credentials $GKE_CLUSTER \
           --zone $GKE_ZONE \
           --project $PROJECT_ID
 
-    # 8. Deploy with Helm (CORRIGÉ)
+    # 9. Install Helm
+    - name: Install Helm
+      run: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+    # 10. Deploy with Helm
     - name: Deploy with Helm
       run: |
         helm upgrade --install backend ./helm/backend \

@@ -1,21 +1,24 @@
-# ========== Stage 1 : Build ==========
+# ================================
+# Stage 1 : Build
+# ================================
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
-
-# ========== Stage 2 : Production ==========
-FROM node:22-alpine AS production
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-WORKDIR /app
-COPY --from=builder /app/node_modules ./node_modules
+RUN npm ci
 COPY . .
-RUN rm -rf .env .git .gitignore Dockerfile docker-compose* \
-    && chown -R appuser:appgroup /app
+
+# ================================
+# Stage 2 : Production
+# ================================
+FROM node:22-alpine AS production
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY --from=builder /app .
+
+# Sécurité : ne pas utiliser root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
+
 EXPOSE 5000
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
-# Démarrer l'application
 CMD ["node", "server.js"]
