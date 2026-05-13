@@ -1,0 +1,73 @@
+name: Backend CI/CD (GKE + Helm + GCP)
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: model-nexus-496108-s7
+  GKE_CLUSTER: mern-gcp-dev-gke
+  GKE_ZONE: europe-west1-b
+  REGION: europe-west1
+  ARTIFACT_REGISTRY: europe-west1-docker.pkg.dev
+  REPOSITORY: mern-backend-repo
+  IMAGE_NAME: backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write   # OIDC GCP
+
+    steps:
+
+    # 1. Checkout
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 2. Auth GCP (OIDC)
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+    # 3. Setup gcloud
+    - name: Setup Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    # 4. Docker auth
+    - name: Configure Docker authentication
+      run: |
+        gcloud auth configure-docker $ARTIFACT_REGISTRY
+
+    # 5. Build image
+    - name: Build Docker image
+      run: |
+        docker build -t $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }} ./backend
+
+    # 6. Push image
+    - name: Push Docker image
+      run: |
+        docker push $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }}
+
+    # 7. Get GKE credentials (ZONE FIXED)
+    - name: Get GKE credentials
+      run: |
+        gcloud container clusters get-credentials $GKE_CLUSTER \
+          --zone $GKE_ZONE \
+          --project $PROJECT_ID
+
+    # 8. Deploy with Helm (CORRIGÉ)
+    - name: Deploy with Helm
+      run: |
+        helm upgrade --install backend ./helm/backend \
+          --namespace backend \
+          --create-namespace \
+          --set image.repository=$ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME \
+          --set image.tag=${{ github.sha }} \
+          --wait \
+          --atomic
