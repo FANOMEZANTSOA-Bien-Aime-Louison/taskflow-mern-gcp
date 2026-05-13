@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow-backend
+  labels: 
+    app: taskflow-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: taskflow-backend
+  template:
+    metadata:
+      labels:
+        app: taskflow-backend
+    spec:
+      containers:
+        - name: backend
+          image: sandra1002/taskflow-backend:v7
+          ports:
+            - containerPort: 3000
+          env:
+            - name: MONGO_URI
+              value:  "mongodb+srv://doadmin:91jRdI42h0s6w78H@db-mongodb-fra1-taskflow-8fe8cb2b.mongo.ondigitalocean.com/taskflow?authSource=admin&tls=true"
+              value:  "mongodb+srv://doadmin:91jRdI42h0s6w78H@db-mongodb-fra1-taskflow-8fe8cb2b.mongo.ondigitalocean.com/taskflow?authSource=admin&tls=true"
+            - name: JWT_SECRET
+              value: "taskflow_secret_2024"
