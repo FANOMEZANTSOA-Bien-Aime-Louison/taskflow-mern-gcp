@@ -14,7 +14,8 @@ service:
 
 ingress:
   enabled: true
-  className: gce
+  className: nginx
+  host: api.taskflow.fblouison.com
 
 resources:
   requests:

@@ -2,6 +2,6 @@ output "frontend_bucket_name" {
   value = google_storage_bucket.frontend_bucket.name
 }
 
-output "frontend_url" {
-  value = google_storage_bucket.frontend_bucket.url
+output "frontend_bucket_url" {
+  value = "https://storage.googleapis.com/${google_storage_bucket.frontend_bucket.name}"
 }
