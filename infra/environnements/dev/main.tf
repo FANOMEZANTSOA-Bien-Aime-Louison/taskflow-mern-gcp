@@ -21,6 +21,7 @@ module "frontend_storage" {
 
   project_name = var.project_name
   region       = var.region
+  domain       = "taskflow.fblouison.com"
 }
 
 module "gke" {
