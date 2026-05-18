@@ -1,9 +1,3 @@
-Parfait ✅  
-Voici le **README complet en format brut Markdown**, prêt à **copier-coller directement dans ton README.md**.
-
----
-
-```markdown
 # 🚀 TaskFlow — Production-Ready MERN on Google Cloud
 
 [![GCP](https://img.shields.io/badge/Cloud-Google%20Cloud-blue)]()
