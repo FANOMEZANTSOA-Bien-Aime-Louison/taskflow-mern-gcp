@@ -1,4 +1,19 @@
-# 🚀 TaskFlow — Production-Ready MERN on Google Cloud
+Parfait.  
+On va faire deux choses :
+
+1️⃣ ✅ **Te donner le README final propre, cohérent, sans live demo permanent** (copie directe prête)  
+2️⃣ 🎨 **Te guider étape par étape pour créer des architectures propres dans Figma niveau “Cloud Engineer pro”**
+
+---
+
+# ✅ README FINAL — VERSION PORTFOLIO PRO
+
+👉 Copie-colle directement ci-dessous dans ton `README.md`
+
+---
+
+```markdown
+# 🚀 TaskFlow — Cloud-Native MERN on Google Cloud
 
 [![GCP](https://img.shields.io/badge/Cloud-Google%20Cloud-blue)]()
 [![Kubernetes](https://img.shields.io/badge/Orchestration-Kubernetes-326CE5)]()
@@ -8,28 +23,32 @@
 [![Cloudflare](https://img.shields.io/badge/DNS-Cloudflare-orange)]()
 [![License](https://img.shields.io/badge/License-MIT-green)]()
 
-> A full-stack MERN application deployed using production-grade DevOps practices on Google Cloud Platform.
-
-This project demonstrates real-world cloud architecture including:
-
-- Infrastructure as Code (Terraform)
-- Kubernetes (GKE)
-- Helm deployments
-- GitHub Actions CI/CD (OIDC authentication)
-- Cloud CDN & Global HTTPS Load Balancer
-- Cert-Manager + Let’s Encrypt TLS automation
-- Cloudflare DNS + WAF
-- Horizontal Pod Autoscaling
-- Private networking + Cloud NAT
+> A production-oriented cloud-native MERN application deployed using modern DevOps practices on Google Cloud Platform.
 
 ---
 
-# 🌍 Live Demo
+# 🎯 Project Objective
 
-| Layer | URL |
-|-------|------|
-| Frontend | https://taskflow.fblouison.com |
-| Backend API | https://api.taskflow.fblouison.com/api/health |
+This project demonstrates the design and deployment of a production-ready cloud-native application using modern DevOps and cloud engineering practices.
+
+The focus areas include:
+
+- Infrastructure as Code (Terraform)
+- Kubernetes orchestration (GKE)
+- Secure CI/CD pipelines with OIDC
+- Scalable backend architecture
+- Cloud networking design
+- Automated TLS management
+- CDN optimization and caching strategy
+
+---
+
+# 🌍 Deployment Status
+
+⚠️ This infrastructure is provisioned on-demand using Terraform.
+
+To avoid unnecessary cloud costs, the live environment is not permanently running.  
+The entire stack can be reproduced at any time using the provided Infrastructure as Code and CI/CD pipelines.
 
 ---
 
@@ -55,7 +74,7 @@ This project demonstrates real-world cloud architecture including:
           (React SPA)
 ```
 
-Detailed architecture diagrams will be available in `/docs/architecture/`.
+Detailed visual architecture diagrams are available in `/docs/architecture/`.
 
 ---
 
@@ -67,14 +86,14 @@ Detailed architecture diagrams will be available in `/docs/architecture/`.
 - Hosted on Google Cloud Storage
 - Cloud CDN enabled
 - Global HTTPS Load Balancer
-- Cloudflare proxy & caching rules
+- Cloudflare proxy and caching rules
 
 ## Backend
 - Node.js + Express
 - MongoDB Atlas
 - Deployed on GKE
-- Managed with Helm
-- Horizontal Pod Autoscaler enabled
+- Managed via Helm
+- Horizontal Pod Autoscaler (HPA)
 
 ## Infrastructure
 - Terraform (modular architecture)
@@ -114,14 +133,14 @@ taskflow/
 
 # ☁️ Infrastructure as Code (Terraform)
 
-Infrastructure is modularized:
+Infrastructure is fully modularized:
 
 ```
 modules/
 ├── network/               # VPC, Subnet, NAT, Firewall
 ├── gke/                   # Cluster + Node Pool
 ├── artifact-registry/
-└── frontend-storage/      # GCS + CDN + LB + SSL
+└── frontend-storage/      # GCS + CDN + Load Balancer + SSL
 ```
 
 ## Deploy Infrastructure
@@ -139,7 +158,7 @@ Provisioned resources include:
 - GKE Cluster
 - Artifact Registry
 - Global Static IP
-- CDN-enabled Load Balancer
+- CDN-enabled HTTPS Load Balancer
 - GCS frontend bucket
 
 ---
@@ -181,7 +200,7 @@ helm upgrade --install cert-manager-config ./helm/cert-manager \
 
 Triggered on push to `main`.
 
-### Pipeline Steps:
+### Pipeline Flow
 
 1. Authenticate to Google Cloud via OIDC
 2. Build Docker image
@@ -201,19 +220,19 @@ git push → build → push → deploy → verify → success
 ```
 
 No service account keys are used.  
-Authentication is handled securely via Workload Identity Federation.
+Authentication is handled securely using Workload Identity Federation.
 
 ---
 
 # 🔐 Security Practices
 
-- Workload Identity (no JSON keys)
+- Workload Identity (no static credentials)
 - Private GKE nodes
-- Cloud NAT for outbound access
+- Cloud NAT for controlled outbound traffic
 - TLS via Let’s Encrypt
 - HTTPS enforced
 - Cloudflare WAF enabled
-- CORS restricted
+- CORS restrictions
 - Health check endpoint
 - HPA enabled
 
@@ -236,41 +255,6 @@ kubectl get certificate -n backend
 
 ---
 
-# 🌐 CDN & Caching Strategy
-
-### Static assets
-- `/assets/*`
-- Cached long-term (immutable hashed files)
-
-### SPA entry point
-- `index.html`
-- No-cache policy
-
-### API
-- Cache bypassed at Cloudflare level
-
----
-
-# 🛠 Local Development
-
-## Backend
-
-```bash
-cd backend
-npm install
-npm run dev
-```
-
-## Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
----
-
 # 🧪 Health Check
 
 ```bash
@@ -281,8 +265,7 @@ Expected response:
 
 ```json
 {
-  "status": "healthy",
-  "environment": "production"
+  "status": "OK"
 }
 ```
 
@@ -298,16 +281,15 @@ Expected response:
 
 ---
 
-# 🏆 What This Project Demonstrates
+# 🏆 Key Engineering Highlights
 
-- Full production cloud architecture
-- Infrastructure as Code best practices
-- Kubernetes deployment strategy
-- CI/CD with OIDC authentication
-- TLS automation
-- Global CDN setup
-- Secure networking
-- Real-world DevOps workflow
+- Production-oriented cloud architecture
+- Modular Terraform infrastructure
+- Secure OIDC-based CI/CD
+- Automated TLS lifecycle
+- Global CDN optimization
+- Scalable Kubernetes backend
+- Infrastructure reproducibility
 
 ---
 
@@ -331,23 +313,8 @@ MIT License
 
 # 👤 Author
 
- FANOMEZANTSOA Bien Aimé Louison
-
+FANOMEZANTSOA Bien Aimé Louison  
 Cloud & DevOps Engineer  
 Google Cloud | Kubernetes | Terraform | CI/CD
-
----
-
-# 🎯 Project Objective
-This project demonstrates the design and deployment of a production-ready cloud-native application using modern DevOps practices.
-
-The focus is on:
-
-Infrastructure as Code
-Kubernetes orchestration
-Secure CI/CD pipelines
-Scalability & reliability
-Cloud networking design
-Automated TLS management
 
 ---
