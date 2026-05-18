@@ -1,9 +1,14 @@
+# .github/workflows/backend.yml
 name: Backend CI/CD (GKE + Helm + GCP)
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'backend/**'
+      - 'helm/backend/**'
+      - '.github/workflows/backend.yml'
 
 env:
   PROJECT_ID: model-nexus-496108-s7
@@ -15,71 +20,164 @@ env:
   IMAGE_NAME: backend
 
 jobs:
-  deploy:
+  # ══════════════════════════════════════════════
+  # JOB 1 — Build & Push Docker Image
+  # ══════════════════════════════════════════════
+  build:
+    name: Build & Push Image
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
       id-token: write
 
+    outputs:
+      image-tag: ${{ github.sha }}
+
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    # 1. Checkout
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-    # 2. Auth GCP (OIDC)
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v2
-      with:
-        workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-        service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
-    # 3. Setup gcloud
-    - name: Setup Google Cloud SDK
-      uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Docker authentication
+        run: |
+          gcloud auth configure-docker $ARTIFACT_REGISTRY --quiet
 
-    # 4. ✅ Installer gke-gcloud-auth-plugin (AJOUT ICI)
-    - name: Install GKE auth plugin
-      run: |
-        gcloud components install gke-gcloud-auth-plugin --quiet
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }} \
+            -t $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest \
+            ./backend
 
-    # 5. Docker auth
-    - name: Configure Docker authentication
-      run: |
-        gcloud auth configure-docker $ARTIFACT_REGISTRY --quiet
+      - name: Push Docker image
+        run: |
+          docker push $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }}
+          docker push $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest
 
-    # 6. Build image
-    - name: Build Docker image
-      run: |
-        docker build \
-          -t $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }} \
-          ./backend
+  # ══════════════════════════════════════════════
+  # JOB 2 — Deploy to GKE
+  # ══════════════════════════════════════════════
+  deploy:
+    name: Deploy to GKE
+    runs-on: ubuntu-latest
+    needs: build
 
-    # 7. Push image
-    - name: Push Docker image
-      run: |
-        docker push $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:${{ github.sha }}
+    permissions:
+      contents: read
+      id-token: write
 
-    # 8. Get GKE credentials
-    - name: Get GKE credentials
-      run: |
-        gcloud container clusters get-credentials $GKE_CLUSTER \
-          --zone $GKE_ZONE \
-          --project $PROJECT_ID
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    # 9. Install Helm
-    - name: Install Helm
-      run: |
-        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-    # 10. Deploy with Helm
-    - name: Deploy with Helm
-      run: |
-        helm upgrade --install backend ./helm/backend \
-          --namespace backend \
-          --create-namespace \
-          --set image.repository=$ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME \
-          --set image.tag=${{ github.sha }} \
-          --wait \
-          --atomic
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Install GKE auth plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin --quiet
+
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials $GKE_CLUSTER \
+            --zone $GKE_ZONE \
+            --project $PROJECT_ID
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.14.0'
+
+      # ─────────────────────────────────────────
+      # Vérifier que cert-manager est bien installé
+      # ─────────────────────────────────────────
+      - name: Verify cert-manager is ready
+        run: |
+          echo "Checking cert-manager pods..."
+          kubectl get pods -n cert-manager
+
+          echo "Checking ClusterIssuer..."
+          kubectl get clusterissuer letsencrypt-prod \
+            -o jsonpath='{.status.conditions[0].type}' \
+            2>/dev/null && echo " ← ClusterIssuer exists" \
+            || echo "⚠️  ClusterIssuer not found — run cert-manager chart first"
+
+      # ─────────────────────────────────────────
+      # Deploy backend ONLY (pas de ClusterIssuer ici)
+      # ─────────────────────────────────────────
+      - name: Deploy backend with Helm
+        run: |
+          helm upgrade --install backend ./helm/backend \
+            --namespace backend \
+            --create-namespace \
+            --set image.repository=$ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME \
+            --set image.tag=${{ github.sha }} \
+            --wait \
+            --atomic \
+            --timeout 5m
+
+      # ─────────────────────────────────────────
+      # Vérifications post-déploiement
+      # ─────────────────────────────────────────
+      - name: Verify deployment
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Pods"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          kubectl get pods -n backend
+
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Services"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          kubectl get svc -n backend
+
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Ingress"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          kubectl get ingress -n backend
+
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Certificate"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          kubectl get certificate -n backend
+
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  HPA"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          kubectl get hpa -n backend
+
+      - name: Health check
+        run: |
+          sleep 15
+          curl --fail --silent --show-error \
+            https://api.taskflow.fblouison.com/api/health \
+            | jq . \
+            || echo "⚠️  Health check failed — check pod logs"
+
+      - name: Show deployment summary
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  DEPLOYMENT SUMMARY"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Image : $ARTIFACT_REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME"
+          echo "  Tag   : ${{ github.sha }}"
+          echo "  Cluster : $GKE_CLUSTER ($GKE_ZONE)"
+          echo "  Namespace : backend"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          helm status backend -n backend
