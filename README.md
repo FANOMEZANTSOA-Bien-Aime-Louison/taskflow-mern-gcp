@@ -1,18 +1,3 @@
-Parfait.  
-On va faire deux choses :
-
-1️⃣ ✅ **Te donner le README final propre, cohérent, sans live demo permanent** (copie directe prête)  
-2️⃣ 🎨 **Te guider étape par étape pour créer des architectures propres dans Figma niveau “Cloud Engineer pro”**
-
----
-
-# ✅ README FINAL — VERSION PORTFOLIO PRO
-
-👉 Copie-colle directement ci-dessous dans ton `README.md`
-
----
-
-```markdown
 # 🚀 TaskFlow — Cloud-Native MERN on Google Cloud
 
 [![GCP](https://img.shields.io/badge/Cloud-Google%20Cloud-blue)]()
